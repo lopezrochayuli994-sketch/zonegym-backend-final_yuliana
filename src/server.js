@@ -15,6 +15,9 @@ import beneficioRoutes from "./routes/beneficio.routes.js";
 dotenv.config();
 connectDB();
 
+const cors = require('cors');
+app.use(cors());
+
 const app = express();
 
 app.use(cors());
