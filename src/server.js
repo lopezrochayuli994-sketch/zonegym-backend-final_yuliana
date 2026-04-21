@@ -14,7 +14,6 @@ import helmet from "helmet";
 import User from "./models/User.js";
 import rateLimit from "express-rate-limit";
 
-
 dotenv.config();
 connectDB();
 
@@ -22,22 +21,38 @@ const app = express();
 
 app.use(helmet());
 
+// 🔥 CORS CORREGIDO (PREVENTA DE ERROR PREFLIGHT)
 app.use(cors({
-  origin: ["http://localhost:5173",
-  "https://zonegym-frontend-finalyuliana.vercel.app"],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "https://zonegym-frontend-finalyuliana.vercel.app"
+    ];
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("No permitido por CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 
+// 🔥 IMPORTANTE: PERMITIR PREFLIGHT (OPTIONS)
+app.options("*", cors());
+
 app.use(express.json());
 
-/* 🔥 RATE LIMIT (AQUÍ VA BIEN) */
+/* 🔥 RATE LIMIT */
 const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minuto
-  max: 10, // máximo 10 peticiones
+  windowMs: 60 * 1000,
+  max: 10,
   message: "Demasiadas peticiones, intenta más tarde"
 });
 
-/* ✅ APLICAR SOLO A COMMENTS */
+/* ✅ SOLO COMMENTS */
 app.use("/api/comments", limiter);
 
 /* ✅ RUTAS */
@@ -49,8 +64,7 @@ app.use("/api/beneficios", beneficioRoutes);
 app.use("/api/reservations", reservationsRoutes);
 app.use("/api/comments", commentRoutes);
 
-
-/* 👇 IMPORTANTE */
+/* 👇 (esto lo dejo como lo tienes, aunque está duplicado, no rompe) */
 app.use("/api", userRoutes);
 
 app.get("/", (req, res) => {
