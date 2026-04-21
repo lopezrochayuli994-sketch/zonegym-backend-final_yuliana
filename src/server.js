@@ -21,27 +21,32 @@ const app = express();
 
 app.use(helmet());
 
-// 🔥 CORS CORREGIDO (PREVENTA DE ERROR PREFLIGHT)
-app.use(cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "https://zonegym-frontend-finalyuliana.vercel.app"
-    ];
+// 🔥 CORS USANDO .env + PREFLIGHT (ESTO ARREGLA TU ERROR)
+const ORIGIN = process.env.ORIGIN || "http://localhost:5173";
 
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("No permitido por CORS"));
-    }
-  },
+// 1) Responder SIEMPRE al preflight (OPTIONS)
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", ORIGIN);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.sendStatus(204);
+});
+
+// 2) Forzar headers en TODAS las respuestas
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", ORIGIN);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
+
+// 3) cors() (opcional pero útil)
+app.use(cors({
+  origin: ORIGIN,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
-
-// 🔥 IMPORTANTE: PERMITIR PREFLIGHT (OPTIONS)
-app.options("*", cors());
 
 app.use(express.json());
 
@@ -64,7 +69,7 @@ app.use("/api/beneficios", beneficioRoutes);
 app.use("/api/reservations", reservationsRoutes);
 app.use("/api/comments", commentRoutes);
 
-/* 👇 (esto lo dejo como lo tienes, aunque está duplicado, no rompe) */
+// (puedes quitar esto si quieres evitar duplicados)
 app.use("/api", userRoutes);
 
 app.get("/", (req, res) => {
