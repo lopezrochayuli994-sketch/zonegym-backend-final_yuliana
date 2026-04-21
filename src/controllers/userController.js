@@ -1,7 +1,10 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
+// =========================
 // REGISTRO
+// =========================
 export const registerUser = async (req, res) => {
   try {
     const {
@@ -52,11 +55,14 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// LOGIN
+// =========================
+// LOGIN (CON JWT 🔐)
+// =========================
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Buscar usuario
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -65,6 +71,7 @@ export const loginUser = async (req, res) => {
         .json({ message: "Correo o contraseña incorrectos" });
     }
 
+    // Comparar contraseña
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -73,31 +80,53 @@ export const loginUser = async (req, res) => {
         .json({ message: "Correo o contraseña incorrectos" });
     }
 
+    // Validar activación
     if (user.role !== "admin" && !user.isActive) {
       return res.status(403).json({
         message: "Tu cuenta está pendiente de aprobación por el administrador.",
       });
     }
 
+    //  GENERAR TOKEN
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
+
+    // ✅ RESPUESTA CORRECTA
     res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
-      membershipStatus: user.membershipStatus,
-      message: `Bienvenido, ${user.name}`,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        membershipStatus: user.membershipStatus,
+      },
     });
+
   } catch (error) {
     console.error("Error loginUser:", error);
     res.status(500).json({ message: "Error al intentar iniciar sesión" });
   }
 };
 
+// =========================
 // OBTENER TODOS LOS USUARIOS
+// =========================
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const users = await User.find()
+      .select("-password")
+      .sort({ createdAt: -1 });
+
     res.json(users);
   } catch (error) {
     console.error("Error getUsers:", error);
@@ -105,7 +134,9 @@ export const getUsers = async (req, res) => {
   }
 };
 
+// =========================
 // ACTIVAR USUARIO
+// =========================
 export const activateUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -126,7 +157,9 @@ export const activateUser = async (req, res) => {
   }
 };
 
+// =========================
 // DESACTIVAR USUARIO
+// =========================
 export const deactivateUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
